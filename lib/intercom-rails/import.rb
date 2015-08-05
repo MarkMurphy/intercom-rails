@@ -8,7 +8,7 @@ module IntercomRails
 
     def self.bulk_create_api_endpoint
       host = (ENV['INTERCOM_RAILS_DEV'] ? "http://api.intercom.dev" : "https://api.intercom.io")
-      URI.parse(host + "/v1/users/bulk_create")
+      URI.parse(host + "/users/bulk")
     end
 
     def self.run(*args)
@@ -23,7 +23,7 @@ module IntercomRails
       @http = Net::HTTP.new(@uri.host, @uri.port)
       @failed = []
       @total_sent = 0
-      @max_batch_size = [(options[:max_batch_size] || 100), 100].min
+      @max_batch_size = [(options[:max_batch_size] || 50), 50].min
 
       @status_enabled = !!options[:status_enabled]
 
@@ -136,13 +136,15 @@ module IntercomRails
     MAX_REQUEST_ATTEMPTS = 3
     def perform_request(request, attempts = 0, error = {})
       if (attempts > 0) && (attempts < MAX_REQUEST_ATTEMPTS)
-        sleep(0.5)
+        sleep(5)
       elsif error.present?
         raise error[:exception] if error[:exception]
         raise exception_for_failed_response(error[:failed_response])
       end
 
       response = http.request(request)
+
+      sleep(0.005) # wait 5ms between requests
 
       return response if successful_response?(response)
       perform_request(request, attempts + 1, :failed_response => response)
